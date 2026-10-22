@@ -42,8 +42,10 @@ private:
 	void Restore();
 
 	CMenuSpinControl upscaler;
+	CMenuSpinControl dlssQuality;
 	CMenuCheckBox    vsync;
 	CMenuCheckBox    framegen;
+	CMenuSpinControl framegenMult;
 
 	CMenuAction      fogHeader;
 	CMenuCheckBox    fog;
@@ -70,8 +72,10 @@ bool CMenuRayTracing::KeyDown( int key )
 void CMenuRayTracing::SaveCb()
 {
 	upscaler.WriteCvar();
+	dlssQuality.WriteCvar();
 	vsync.WriteCvar();
 	framegen.WriteCvar();
+	framegenMult.WriteCvar();
 	fog.WriteCvar();
 	fogDistance.WriteCvar();
 	fogScattering.WriteCvar();
@@ -86,8 +90,10 @@ void CMenuRayTracing::SaveCb()
 void CMenuRayTracing::Restore()
 {
 	upscaler.DiscardChanges();
+	dlssQuality.DiscardChanges();
 	vsync.DiscardChanges();
 	framegen.DiscardChanges();
+	framegenMult.DiscardChanges();
 	fog.DiscardChanges();
 	fogDistance.DiscardChanges();
 	fogScattering.DiscardChanges();
@@ -124,32 +130,46 @@ void CMenuRayTracing::_Init( void )
 	upscaler.Setup( &upscalerModel );
 	upscaler.SetNameAndStatus( L( "Upscaler" ), L( "Upscaling and denoising used by the path tracer" ));
 	upscaler.LinkCvar( "rt_upscaler", CMenuEditable::CVAR_VALUE );
-	upscaler.SetRect( left, 260, 240, 32 );
+	upscaler.SetRect( left, 250, 240, 32 );
+
+	static const char *qualityItems[] = { L( "Native AA" ), L( "Quality" ), L( "Balanced" ), L( "Performance" ), L( "Ultra performance" ) };
+	static CStringArrayModel qualityModel( qualityItems, V_ARRAYSIZE( qualityItems ));
+	dlssQuality.Setup( &qualityModel );
+	dlssQuality.SetNameAndStatus( L( "DLSS quality" ), L( "Internal resolution used by DLSS (lower is faster)" ));
+	dlssQuality.LinkCvar( "rt_dlss_quality", CMenuEditable::CVAR_VALUE );
+	dlssQuality.SetRect( left, 320, 240, 32 );
 
 	vsync.SetNameAndStatus( L( "Vertical sync" ), L( "Synchronize presentation with the display refresh rate" ));
 	vsync.LinkCvar( "rt_vsync" );
-	vsync.SetCoord( left, 310 );
+	vsync.SetCoord( left, 370 );
 
 	framegen.SetNameAndStatus( L( "Frame generation" ), L( "Generate intermediate frames (requires a supported GPU)" ));
 	framegen.LinkCvar( "rt_framegen" );
-	framegen.SetCoord( left, 360 );
+	framegen.SetCoord( left, 415 );
+
+	static const char *multItems[] = { "2x", "3x", "4x" };
+	static CStringArrayModel multModel( multItems, V_ARRAYSIZE( multItems ));
+	framegenMult.Setup( &multModel );
+	framegenMult.SetNameAndStatus( L( "Frame generation multiplier" ), L( "Displayed frames per rendered frame" ));
+	framegenMult.LinkCvar( "rt_framegen_mult", CMenuEditable::CVAR_VALUE );
+	framegenMult.SetRect( left, 485, 240, 32 );
 
 	// Volumetric fog
-	SetupHeader( fogHeader, L( "Volumetric fog" ), left, 430 );
+	SetupHeader( fogHeader, L( "Volumetric fog" ), left, 540 );
 
 	fog.SetNameAndStatus( L( "Enable fog" ), L( "Path-traced volumetric fog and light shafts" ));
 	fog.LinkCvar( "rt_fog" );
-	fog.SetCoord( left, 470 );
+	fog.SetCoord( left, 575 );
 
 	fogDistance.SetNameAndStatus( L( "Fog visibility distance" ), L( "How far you can see through the fog, in meters" ));
 	fogDistance.Setup( 25, 2000, 25 );
 	fogDistance.LinkCvar( "rt_fog_distance" );
-	fogDistance.SetCoord( left, 550 );
+	fogDistance.SetCoord( left, 645 );
 
 	fogScattering.SetNameAndStatus( L( "Fog light scattering" ), L( "How strongly the fog scatters light" ));
 	fogScattering.Setup( 0.0f, 2.0f, 0.05f );
 	fogScattering.LinkCvar( "rt_fog_scattering" );
-	fogScattering.SetCoord( left, 620 );
+	fogScattering.SetCoord( left, 705 );
 
 	// Glass
 	SetupHeader( glassHeader, L( "Glass" ), right, 230 );
@@ -180,15 +200,17 @@ void CMenuRayTracing::_Init( void )
 	unavailable.iFlags = QMF_INACTIVE | QMF_DROPSHADOW;
 	unavailable.szName = L( "These options require the OpenRemix renderer (-ref openremix)" );
 	unavailable.colorBase = uiColorHelp;
-	unavailable.SetRect( left, 690, 640, 24 );
+	unavailable.SetRect( right, 560, 400, 24 );
 
 	AddItem( banner );
 	AddButton( L( "Done" ), nullptr, PC_DONE, VoidCb( &CMenuRayTracing::SaveCb ));
 	AddButton( L( "GameUI_Cancel" ), nullptr, PC_CANCEL, VoidCb( &CMenuRayTracing::RestoreCb ));
 
 	AddItem( upscaler );
+	AddItem( dlssQuality );
 	AddItem( vsync );
 	AddItem( framegen );
+	AddItem( framegenMult );
 	AddItem( fogHeader );
 	AddItem( fog );
 	AddItem( fogDistance );
@@ -206,7 +228,7 @@ void CMenuRayTracing::Reload()
 {
 	bool active = !stricmp( EngFuncs::GetCvarString( "r_refdll_loaded" ), "openremix" );
 
-	CMenuBaseItem *items[] = { &upscaler, &vsync, &framegen, &fog, &fogDistance, &fogScattering, &glass, &glassThin, &glassIOR, &glassTexture };
+	CMenuBaseItem *items[] = { &upscaler, &dlssQuality, &vsync, &framegen, &framegenMult, &fog, &fogDistance, &fogScattering, &glass, &glassThin, &glassIOR, &glassTexture };
 	for( CMenuBaseItem *item : items )
 	{
 		item->SetGrayed( !active );
